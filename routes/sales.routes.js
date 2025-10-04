@@ -6,14 +6,13 @@ const {
   abrirCaja,
   cerrarCaja,
   getCajaById,
-} = require("../controllers/sales.controller");
-
-const {
   getTickets,
   getTicketsByIdCaja,
   createTicket,
   getTicketById,
-} = require("../controllers/tickets.controller");
+  getTicketsByUserAndDates,
+} = require("../controllers/sales.controller");
+
 const router = express.Router();
 
 const noCache = (req, res, next) => {
@@ -26,17 +25,13 @@ const noCache = (req, res, next) => {
   next();
 };
 
-// Todas las cajas abiertas
 router.get("/", noCache, auth, function (req, res, next) {
   cajasAbiertas(req, res, next);
 });
 
-//Caja abierta del usuario
-router.get("/:userId", auth, function (req, res, next) {
+router.get("/:userId", noCache, auth, function (req, res, next) {
   cajaUsuario(req, res, next);
 });
-
-// Abrir y cerrar caja
 
 router.post("/", auth, function (req, res, next) {
   abrirCaja(req, res, next);
@@ -51,8 +46,7 @@ router.get("/open/:id", auth, function (req, res, next) {
   getCajaById(req, res, next);
 });
 
-//rutas de los tickets
-
+//Rutas de los tickets
 router.get("/tickets", auth, function (req, res, next) {
   getTickets(req, res, next);
 });
@@ -67,6 +61,12 @@ router.get("/tickets/:idCaja", auth, function (req, res, next) {
 
 router.get("/ticket/:idTicket", noCache, auth, function (req, res, next) {
   getTicketById(req, res, next);
+});
+
+//Rutas de historial de Tickets (info que trae tickets y cajas
+
+router.get("/ticket/user/:id", auth, function (req, res, next) {
+  getTicketsByUserAndDates(req, res, next);
 });
 
 module.exports = router;
