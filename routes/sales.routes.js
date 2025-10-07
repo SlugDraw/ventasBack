@@ -11,6 +11,7 @@ const {
   createTicket,
   getTicketById,
   getTicketsByUserAndDates,
+  getAllTicketsBydDates,
 } = require("../controllers/sales.controller");
 
 const router = express.Router();
@@ -67,6 +68,10 @@ router.get("/ticket/:idTicket", noCache, auth, function (req, res, next) {
 
 router.get("/ticket/user/:id", auth, function (req, res, next) {
   getTicketsByUserAndDates(req, res, next);
+});
+
+router.get("/tickets/admin/all", auth, function (req, res, next) {
+  getAllTicketsBydDates(req, res, next);
 });
 
 module.exports = router;

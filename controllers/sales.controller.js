@@ -60,7 +60,6 @@ const cerrarCaja = async (req, res) => {
 };
 
 const getCajaById = async (req, res) => {
-  console.log(req.params);
   try {
     const caja = await Sales.findById(req.params.id);
     if (!caja) return res.status(404).json({ message: "Caja no encontrada" });
@@ -119,7 +118,6 @@ const createTicket = async (req, res) => {
 
 const getTicketById = async (req, res) => {
   try {
-    console.log(req.params.idTicket);
     const ticket = await Ticket.findById(req.params.idTicket).populate({
       path: "productos.producto",
       model: "Producto",
@@ -164,6 +162,28 @@ const getTicketsByUserAndDates = async (req, res) => {
   }
 };
 
+const getAllTicketsBydDates = async (req, res) => {
+  try {
+    const { fechaInicio, fechaFin } = req.query;
+
+    const inicio = new Date(fechaInicio);
+    const fin = new Date(fechaFin);
+
+    inicio.setHours(23, 59, 59, 999);
+    fin.setHours(23, 59, 59, 999);
+
+    const tickets = await Ticket.find({
+      fecha: { $gte: inicio, $lte: fin },
+    });
+
+    res.json(tickets);
+  } catch (error) {
+    res
+      .status(500)
+      .json({ message: "Error al obtener tickets", error: error.message });
+  }
+};
+
 module.exports = {
   cajasAbiertas,
   abrirCaja,
@@ -175,4 +195,5 @@ module.exports = {
   createTicket,
   getTicketById,
   getTicketsByUserAndDates,
+  getAllTicketsBydDates,
 };
