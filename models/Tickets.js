@@ -1,4 +1,10 @@
 const mongoose = require("mongoose");
+const dayjs = require("dayjs");
+const utc = require("dayjs/plugin/utc");
+const timezone = require("dayjs/plugin/timezone");
+
+dayjs.extend(utc);
+dayjs.extend(timezone);
 
 const ticketSchema = new mongoose.Schema(
   {
@@ -28,16 +34,25 @@ const ticketSchema = new mongoose.Schema(
       required: true,
     },
     total: { type: Number, required: true },
-    fecha: { type: Date, default: Date.now },
+    fecha: {
+      type: Date,
+      required: true,
+      default: () => dayjs().tz("America/Mexico_City").toDate(),
+    },
   },
   {
     timestamps: true,
     toJSON: {
       virtuals: true,
       transform: (_, ret) => {
-        ret.id = ret._id; // convertir _id en id
+        ret.id = ret._id;
         delete ret._id;
         delete ret.__v;
+        if (ret.fecha) {
+          ret.fecha = dayjs(ret.fecha)
+            .tz("America/Mexico_City")
+            .format("YYYY-MM-DD HH:mm:ss");
+        }
         return ret;
       },
     },
