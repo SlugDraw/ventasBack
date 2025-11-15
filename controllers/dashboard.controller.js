@@ -57,8 +57,6 @@ const getTotalVentaMeses = async (res, req) => {
   console.log(fechaInicio);
 
   const fechaFin = dayjs().tz("America/Mexico_City").endOf("month").toDate();
-  console.log(fechaFin);
-
   try {
     const resultado = await Sales.aggregate([
       {
