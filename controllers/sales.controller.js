@@ -1,5 +1,6 @@
 const Sales = require("../models/Sales");
 const Ticket = require("../models/Tickets");
+const Producto = require("../models/Productos");
 
 //sales
 const cajasAbiertas = async (req, res) => {
@@ -104,14 +105,35 @@ const createTicket = async (req, res) => {
       if (match) {
         const numero = parseInt(match[1], 10);
         const nuevoNumero = numero + 1;
-        siguienteSerial = `TCK-${nuevoNumero.toString().padStart(4, "0")}`;
+        siguienteSerial = `TCK-${nuevoNumero.toString().padStart(5, "0")}`;
       }
     }
+    for (const item of req.body.productos) {
+      console.log(item);
+      const producto = await Producto.findOne({ _id: item.producto });
+      if (!producto) {
+        return res.status(500).json({ message: "Producto no encontrado" });
+      }
+      if (Number(producto.stock) < Number(item.cantidad)) {
+        return res.status(500).json({
+          message: `No hay suficiente stock del producto: ${producto.nombre}`,
+        });
+      }
+    }
+
+    for (const item of req.body.productos) {
+      await Producto.findByIdAndUpdate(
+        item.producto,
+        { $inc: { stock: -item.cantidad } } // resta segura
+      );
+    }
+
     const nuevoTicket = new Ticket(req.body);
     nuevoTicket.serial = siguienteSerial;
     const ticketGuardado = await nuevoTicket.save();
     res.status(201).json(ticketGuardado);
   } catch (error) {
+    console.log(error.message);
     res.status(500).json({ message: error.message });
   }
 };
