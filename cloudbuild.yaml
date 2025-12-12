@@ -1,0 +1,37 @@
+steps:
+  - name: "gcr.io/cloud-builders/docker"
+    args:
+      [
+        "build",
+        "-t",
+        "northamerica-south1-docker.pkg.dev/$PROJECT_ID/backend-repo/backend:$SHORT_SHA",
+        ".",
+      ]
+
+  - name: "gcr.io/cloud-builders/docker"
+    args:
+      [
+        "push",
+        "northamerica-south1-docker.pkg.dev/$PROJECT_ID/backend-repo/backend:$SHORT_SHA",
+      ]
+
+  - name: "gcr.io/google.com/cloudsdktool/cloud-sdk"
+    entrypoint: "gcloud"
+    args:
+      [
+        "run",
+        "deploy",
+        "backend",
+        "--image=northamerica-south1-docker.pkg.dev/$PROJECT_ID/backend-repo/backend:$SHORT_SHA",
+        "--region=northamerica-south1",
+        "--platform=managed",
+        "--allow-unauthenticated",
+        "--min-instances=0",
+        "--max-instances=1",
+        "--memory=512Mi",
+        "--set-env-vars",
+        "MONGO_URI=$MONGO_URI",
+      ]
+
+images:
+  - "northamerica-south1-docker.pkg.dev/$PROJECT_ID/backend-repo/backend:$SHORT_SHA"
