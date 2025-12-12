@@ -33,7 +33,8 @@ steps:
         "--max-instances=1",
         "--memory=512Mi",
         "--set-env-vars",
-        "MONGO_URI=$MONGO_URI",
+        "MONGO_URI=$_MONGO_URI",
+        "JWT_SECRET=$_JWT_SECRET",
       ]
 
 images:
