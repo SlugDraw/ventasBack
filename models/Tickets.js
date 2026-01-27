@@ -26,6 +26,7 @@ const ticketSchema = new mongoose.Schema(
           min: 1,
           default: 1,
         },
+        descuento: { type: Number, default: 0 }, // descuento en porcentaje
       },
     ],
     caja: {
@@ -56,7 +57,7 @@ const ticketSchema = new mongoose.Schema(
         return ret;
       },
     },
-  }
+  },
 );
 
 module.exports = mongoose.model("Ticket", ticketSchema);
