@@ -2,6 +2,7 @@ const Sales = require("../models/Sales");
 const Ticket = require("../models/Tickets");
 const Producto = require("../models/Productos");
 
+
 //sales
 const cajasAbiertas = async (req, res) => {
   try {
