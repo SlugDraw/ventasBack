@@ -40,6 +40,7 @@ const ticketSchema = new mongoose.Schema(
       required: true,
       default: () => dayjs().tz("America/Mexico_City").toDate(),
     },
+    formaDePago: { type: String, required: true, default: "Efectivo" },
   },
   {
     timestamps: true,
