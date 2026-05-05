@@ -3,7 +3,7 @@ const bcrypt = require("bcryptjs");
 // Obtener todos los usuarios
 exports.getUsuarios = async (req, res) => {
   try {
-    const usuarios = await Usuario.find();
+    const usuarios = await Usuario.find({ activo: true });
     res.json(usuarios);
   } catch (error) {
     res.status(500).json({ message: error.message });
@@ -13,7 +13,10 @@ exports.getUsuarios = async (req, res) => {
 // Obtener un usuario por ID
 exports.getUsuarioByUsername = async (req, res) => {
   try {
-    const usuario = await Usuario.findOne({ username: req.params.username });
+    const usuario = await Usuario.findOne({
+      username: req.params.username,
+      activo: true,
+    });
     if (!usuario)
       return res.status(404).json({ message: "Usuario no encontrado" });
     res.json(usuario);
@@ -31,7 +34,7 @@ exports.updateUsuario = async (req, res) => {
     const usuarioActualizado = await Usuario.findByIdAndUpdate(
       req.params.id,
       req.body,
-      { new: true, runValidators: true }
+      { new: true, runValidators: true },
     );
     if (!usuarioActualizado)
       return res.status(404).json({ message: "Usuario no encontrado" });
@@ -44,11 +47,18 @@ exports.updateUsuario = async (req, res) => {
 // Eliminar un usuario
 exports.deleteUsuario = async (req, res) => {
   try {
-    const usuario = await Usuario.findOne({ username: req.params.username });
-    const usuarioEliminado = await Usuario.findByIdAndDelete(usuario.id);
+    const usuario = await Usuario.findOne({
+      username: req.params.username,
+      activo: true,
+    });
+    const usuarioEliminado = await Usuario.findByIdAndUpdate(
+      { _id: usuario._id, activo: true },
+      { activo: false },
+      { new: true, runValidators: true },
+    );
     if (!usuarioEliminado)
       return res.status(404).json({ message: "Usuario no encontrado" });
-    res.json({ message: "Usuario eliminado" });
+    res.json({ message: "Usuario eliminado", usuario: usuarioEliminado });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }

@@ -3,7 +3,7 @@ const Productos = require("../models/Productos");
 // Obtener todos los productos
 exports.getProductos = async (req, res) => {
   try {
-    const productos = await Productos.find();
+    const productos = await Productos.find({ activo: true });
     res.json(productos);
   } catch (error) {
     res.status(500).json({ message: error.message });
@@ -39,7 +39,7 @@ exports.updateProducto = async (req, res) => {
     const productoActualizado = await Productos.findByIdAndUpdate(
       req.params.id,
       req.body,
-      { new: true, runValidators: true }
+      { new: true, runValidators: true },
     );
     if (!productoActualizado)
       return res.status(404).json({ message: "Producto no encontrado" });
@@ -52,10 +52,14 @@ exports.updateProducto = async (req, res) => {
 // Eliminar un producto
 exports.deleteProducto = async (req, res) => {
   try {
-    const productoEliminado = await Productos.findByIdAndDelete(req.params.id);
+    const productoEliminado = await Productos.findByIdAndUpdate(
+      { _id: req.params.id, activo: true },
+      { activo: false },
+      { new: true, runValidators: true },
+    );
     if (!productoEliminado)
       return res.status(404).json({ message: "Producto no encontrado" });
-    res.json({ message: "Producto eliminado" });
+    res.json({ message: "Producto eliminado", producto: productoEliminado });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
