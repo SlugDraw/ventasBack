@@ -12,6 +12,7 @@ const userSchema = new mongoose.Schema(
       enum: ["admin", "empleado"],
       default: "empleado",
     },
+    activo: { type: Boolean, default: true },
   },
   {
     timestamps: true,
@@ -23,7 +24,7 @@ const userSchema = new mongoose.Schema(
         return ret;
       },
     },
-  }
+  },
 );
 
 module.exports = mongoose.model("User", userSchema);

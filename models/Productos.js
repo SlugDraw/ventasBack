@@ -7,6 +7,7 @@ const productoSchema = new mongoose.Schema(
     precio: { type: Number, required: true },
     stock: { type: Number, required: true },
     code: { type: String, required: true, unique: true },
+    activo: { type: Boolean, default: true },
   },
   {
     timestamps: true,
@@ -18,7 +19,7 @@ const productoSchema = new mongoose.Schema(
         return ret;
       },
     },
-  }
+  },
 );
 
 module.exports = mongoose.model("Producto", productoSchema);
