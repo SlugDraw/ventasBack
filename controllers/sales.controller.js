@@ -2,12 +2,11 @@ const Sales = require("../models/Sales");
 const Ticket = require("../models/Tickets");
 const Producto = require("../models/Productos");
 
-
 //sales
 const cajasAbiertas = async (req, res) => {
   try {
     const abiertas = await Sales.find({ status: "abierta" }).populate(
-      "usuario"
+      "usuario",
     );
     res.json(abiertas);
   } catch (error) {
@@ -51,7 +50,7 @@ const cerrarCaja = async (req, res) => {
         fechaCierre: new Date(),
         totalVentas: req.body.totalVenta,
       },
-      { new: true, runValidators: true }
+      { new: true, runValidators: true },
     );
     if (!cajaCerrada)
       return res.status(404).json({ message: "Caja no encontrada" });
@@ -125,7 +124,7 @@ const createTicket = async (req, res) => {
     for (const item of req.body.productos) {
       await Producto.findByIdAndUpdate(
         item.producto,
-        { $inc: { stock: -item.cantidad } } // resta segura
+        { $inc: { stock: -item.cantidad } }, // resta segura
       );
     }
 
@@ -144,7 +143,7 @@ const getTicketById = async (req, res) => {
     const ticket = await Ticket.findById(req.params.idTicket).populate({
       path: "productos.producto",
       model: "Producto",
-      select: "nombre precio code",
+      select: "nombre precio code descripcion",
     });
 
     if (!ticket)
