@@ -36,7 +36,6 @@ exports.createProducto = async (req, res) => {
 // Actualizar un producto existente
 exports.updateProducto = async (req, res) => {
   try {
-    console.log(req.body);
     const productoActualizado = await Productos.findByIdAndUpdate(
       req.params.id,
       req.body,
@@ -53,9 +52,10 @@ exports.updateProducto = async (req, res) => {
 // Eliminar un producto
 exports.deleteProducto = async (req, res) => {
   try {
-    const productoEliminado = await Productos.findByIdAndUpdate(
+    const nuevoCode = `ELIMINADO_${Date.now()}`;
+    const productoEliminado = await Productos.findOneAndUpdate(
       { _id: req.params.id, activo: true },
-      { activo: false },
+      { activo: false, code: nuevoCode },
       { new: true, runValidators: true },
     );
     if (!productoEliminado)
