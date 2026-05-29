@@ -5,14 +5,16 @@ const User = require("../models/Usuario");
 // Registrar usuario
 exports.register = async (req, res) => {
   try {
-    const { nombre, apellidos, username, password, rol } = req.body;
+    const { nombre, apellidos, username, password, rol, codigo } = req.body;
 
     // Validar duplicados
-    const userExists = await User.findOne({ username });
+    const userExists = await User.findOne({
+      $or: [{ username }, { codigo }],
+    });
     if (userExists)
       return res
         .status(400)
-        .json({ message: "El username ya está registrado" });
+        .json({ message: "El username o código ya están registrados" });
 
     // Encriptar contraseña
     const hashedPassword = await bcrypt.hash(password, 10);
@@ -23,6 +25,7 @@ exports.register = async (req, res) => {
       username,
       password: hashedPassword,
       rol,
+      codigo,
     });
     await newUser.save();
 
@@ -52,7 +55,7 @@ exports.login = async (req, res) => {
     const token = jwt.sign(
       { id: user.id, name: user.name },
       process.env.JWT_SECRET,
-      { expiresIn: "1h" }
+      { expiresIn: "1h" },
     );
 
     // Devolver token + datos del usuario

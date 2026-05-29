@@ -13,6 +13,7 @@ const userSchema = new mongoose.Schema(
       default: "empleado",
     },
     activo: { type: Boolean, default: true },
+    codigo: { type: String, required: true, unique: true },
   },
   {
     timestamps: true,
