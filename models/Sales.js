@@ -58,4 +58,15 @@ const salesSchema = new mongoose.Schema(
   }
 );
 
+// Used by the open-cashier lookups and the dashboard date-range aggregates.
+salesSchema.index({ usuario: 1, status: 1 });
+salesSchema.index({ status: 1, fechaCierre: 1 });
+salesSchema.index(
+  { usuario: 1 },
+  {
+    unique: true,
+    partialFilterExpression: { status: "abierta" },
+  },
+);
+
 module.exports = mongoose.model("Sale", salesSchema);

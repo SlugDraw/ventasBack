@@ -4,19 +4,38 @@ const timezone = require("dayjs/plugin/timezone");
 dayjs.extend(utc);
 dayjs.extend(timezone);
 const Sales = require("../models/Sales");
+const Ticket = require("../models/Tickets");
 
-const getTotalVentasAyer = async (res, req) => {
-  const inicioDiaAnterior = dayjs().subtract(1, "day").startOf("day").toDate();
-  const finDiaAnterior = dayjs().subtract(1, "day").endOf("day").toDate();
+const TIME_ZONE = "America/Mexico_City";
+
+const getTotalVentas = async (inicio, fin) => {
+  const resultado = await Sales.aggregate([
+    {
+      $match: {
+        status: "cerrada",
+        fechaCierre: { $gte: inicio.toDate(), $lt: fin.toDate() },
+      },
+    },
+    {
+      $group: {
+        _id: null,
+        total: { $sum: { $ifNull: ["$totalVentas", 0] } },
+      },
+    },
+  ]);
+
+  return resultado[0]?.total || 0;
+};
+
+const getTotalVentasAyer = async (req, res) => {
+  const ayer = dayjs().tz(TIME_ZONE).subtract(1, "day");
+  const inicioDiaAnterior = ayer.startOf("day");
+  const inicioDiaActual = ayer.add(1, "day").startOf("day");
 
   try {
-    const cajasDiaAnterior = await Sales.find({
-      fechaCierre: { $gte: inicioDiaAnterior, $lte: finDiaAnterior },
-    });
-
-    const totalVentasAyer = cajasDiaAnterior.reduce(
-      (total, caja) => total + caja.totalVentas,
-      0
+    const totalVentasAyer = await getTotalVentas(
+      inicioDiaAnterior,
+      inicioDiaActual,
     );
     res.json({ total: totalVentasAyer });
   } catch (error) {
@@ -26,18 +45,14 @@ const getTotalVentasAyer = async (res, req) => {
   }
 };
 
-const getTotalVentaMes = async (res, req) => {
-  const inicioMes = dayjs().startOf("month").toDate();
-  const finMes = dayjs().endOf("month").toDate();
+const getTotalVentaMes = async (req, res) => {
+  const inicioMes = dayjs().tz(TIME_ZONE).startOf("month");
+  const inicioMesSiguiente = inicioMes.add(1, "month").startOf("month");
 
   try {
-    const cajasDelMes = await Sales.find({
-      fechaCierre: { $gte: inicioMes, $lte: finMes },
-    });
-
-    const totalVentaMensual = cajasDelMes.reduce(
-      (total, caja) => total + caja.totalVentas,
-      0
+    const totalVentaMensual = await getTotalVentas(
+      inicioMes,
+      inicioMesSiguiente,
     );
     res.json({ total: totalVentaMensual });
   } catch (error) {
@@ -47,81 +62,46 @@ const getTotalVentaMes = async (res, req) => {
   }
 };
 
-const getTotalVentaMeses = async (res, req) => {
+const getTotalVentaMeses = async (req, res) => {
   const fechaInicio = dayjs()
-    .tz("America/Mexico_City")
-    .subtract(4, "month") // 4 atrás + el actual = 5 meses
-    .startOf("month")
-    .toDate();
+    .tz(TIME_ZONE)
+    .subtract(4, "month")
+    .startOf("month");
+  const fechaFin = dayjs().tz(TIME_ZONE).add(1, "month").startOf("month");
 
-  console.log(fechaInicio);
-
-  const fechaFin = dayjs().tz("America/Mexico_City").endOf("month").toDate();
   try {
     const resultado = await Sales.aggregate([
       {
-        // Filtrar cajas cerradas dentro del rango
         $match: {
           status: "cerrada",
-          fechaCierre: { $gte: fechaInicio, $lte: fechaFin },
-        },
-      },
-      {
-        // Ajustar fecha a zona horaria de México antes de agrupar
-        $addFields: {
-          fechaCierreLocal: {
-            $dateToString: {
-              date: "$fechaCierre",
-              timezone: "America/Mexico_City",
-              format: "%Y-%m-%dT%H:%M:%S",
-            },
+          fechaCierre: {
+            $gte: fechaInicio.toDate(),
+            $lt: fechaFin.toDate(),
           },
         },
       },
       {
-        // Convertir fechaCierreLocal de nuevo a tipo Date para extraer mes y año
-        $addFields: {
-          fechaCierreDate: {
-            $toDate: "$fechaCierreLocal",
-          },
-        },
-      },
-      {
-        // Agrupar por año y mes en hora local
         $group: {
           _id: {
-            year: { $year: "$fechaCierreDate" },
-            month: { $month: "$fechaCierreDate" },
+            $dateToString: {
+              date: "$fechaCierre",
+              timezone: TIME_ZONE,
+              format: "%Y-%m",
+            },
           },
-          total: { $sum: "$totalVentas" },
+          total: { $sum: { $ifNull: ["$totalVentas", 0] } },
           cantidadCajas: { $sum: 1 },
         },
       },
       {
-        // Dar formato al campo "mes"
         $project: {
           _id: 0,
-          mes: {
-            $concat: [
-              { $toString: "$_id.year" },
-              "-",
-              {
-                $cond: [
-                  { $lt: ["$_id.month", 10] },
-                  { $concat: ["0", { $toString: "$_id.month" }] },
-                  { $toString: "$_id.month" },
-                ],
-              },
-            ],
-          },
+          mes: "$_id",
           total: 1,
           cantidadCajas: 1,
         },
       },
-      {
-        // Ordenar de más antiguo a más reciente
-        $sort: { mes: 1 },
-      },
+      { $sort: { mes: 1 } },
     ]);
 
     res.json({ resultado });
@@ -132,54 +112,64 @@ const getTotalVentaMeses = async (res, req) => {
   }
 };
 
-const getVentasByDates = async (res, req) => {
+const getVentasByDates = async (req, res) => {
   try {
     const { fechaInicio, fechaFin } = req.query;
-    const inicio = new Date(fechaInicio);
-    const fin = new Date(fechaFin);
-    const resultados = await Sales.aggregate([
+    const inicio = dayjs.tz(fechaInicio, TIME_ZONE).startOf("day");
+    const inicioFin = dayjs.tz(fechaFin, TIME_ZONE).startOf("day");
+    const fin = dayjs.tz(fechaFin, TIME_ZONE).add(1, "day").startOf("day");
+
+    if (
+      !fechaInicio ||
+      !fechaFin ||
+      !inicio.isValid() ||
+      !inicioFin.isValid() ||
+      !fin.isValid() ||
+      inicio.isAfter(inicioFin)
+    ) {
+      return res.status(400).json({
+        message: "Las fechas deben tener un formato válido",
+      });
+    }
+
+    const resultados = await Ticket.aggregate([
       {
         $match: {
-          status: "cerrada",
-          fechaCierre: { $gte: inicio, $lte: fin },
+          fecha: {
+            $gte: inicio.toDate(),
+            $lt: fin.toDate(),
+          },
         },
       },
       {
         $lookup: {
-          from: "users", // nombre de la colección de usuarios
-          localField: "usuario",
+          from: "users",
+          localField: "empleado",
           foreignField: "_id",
-          as: "usuario",
+          as: "empleado",
         },
       },
-      { $unwind: "$usuario" },
+      { $unwind: "$empleado" },
       {
         $group: {
           _id: {
-            empleado: "$usuario.username", // o "$usuario.username" según tu modelo
-            anio: { $year: "$fechaCierre" },
-            mes: { $month: "$fechaCierre" },
+            empleado: "$empleado.username",
+            fecha: {
+              $dateToString: {
+                date: "$fecha",
+                timezone: TIME_ZONE,
+                format: "%Y-%m",
+              },
+            },
           },
-          ventas: { $sum: "$totalVentas" },
+          ventas: { $sum: { $ifNull: ["$total", 0] } },
         },
       },
       {
         $project: {
           _id: 0,
           empleado: "$_id.empleado",
-          fecha: {
-            $concat: [
-              { $toString: "$_id.anio" },
-              "-",
-              {
-                $cond: {
-                  if: { $lt: ["$_id.mes", 10] },
-                  then: { $concat: ["0", { $toString: "$_id.mes" }] },
-                  else: { $toString: "$_id.mes" },
-                },
-              },
-            ],
-          },
+          fecha: "$_id.fecha",
           ventas: 1,
         },
       },

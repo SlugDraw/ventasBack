@@ -79,4 +79,9 @@ const ticketSchema = new mongoose.Schema(
   },
 );
 
+// These match the most frequent filters/sorts without adding redundant indexes.
+ticketSchema.index({ caja: 1, fecha: -1 });
+ticketSchema.index({ fecha: 1, serial: 1 });
+ticketSchema.index({ createdAt: -1 });
+
 module.exports = mongoose.model("Ticket", ticketSchema);

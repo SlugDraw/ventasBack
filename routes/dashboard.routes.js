@@ -4,19 +4,19 @@ const dashboardController = require("../controllers/dashboard.controller");
 const router = express.Router();
 
 router.get("/totalAyer", auth, function (req, res, next) {
-  dashboardController.getTotalVentasAyer(res, req, next);
+  dashboardController.getTotalVentasAyer(req, res, next);
 });
 
 router.get("/totalMes", auth, function (req, res, next) {
-  dashboardController.getTotalVentaMes(res, req, next);
+  dashboardController.getTotalVentaMes(req, res, next);
 });
 
 router.get("/totalMeses", auth, function (req, res, next) {
-  dashboardController.getTotalVentaMeses(res, req, next);
+  dashboardController.getTotalVentaMeses(req, res, next);
 });
 
 router.get("/ventasEmpleados", auth, function (req, res, next) {
-  dashboardController.getVentasByDates(res, req, next);
+  dashboardController.getVentasByDates(req, res, next);
 });
 
 module.exports = router;

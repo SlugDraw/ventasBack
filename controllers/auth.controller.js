@@ -41,7 +41,7 @@ exports.login = async (req, res) => {
     const { username, password } = req.body;
 
     // Buscar por nombre de usuario
-    const user = await User.findOne({ username });
+    const user = await User.findOne({ username, activo: true });
 
     if (!user)
       return res.status(404).json({ message: "Usuario no encontrado" });

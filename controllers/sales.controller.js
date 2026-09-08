@@ -4,6 +4,35 @@ const Ticket = require("../models/Tickets");
 const Producto = require("../models/Productos");
 const Usuario = require("../models/Usuario");
 
+const isDuplicateKeyError = (error) => error?.code === 11000;
+
+const getSiguienteSerial = async () => {
+  const ultimo = await Ticket.findOne({ serial: /^TCK-\d+$/ })
+    .sort({ createdAt: -1 })
+    .select("serial");
+  if (!ultimo) return "TCK-00001";
+
+  const match = ultimo.serial.match(/(\d+)$/);
+  if (!match) return "TCK-00001";
+
+  return `TCK-${(parseInt(match[1], 10) + 1).toString().padStart(5, "0")}`;
+};
+
+const guardarTicketConSerial = async (datosTicket) => {
+  // A unique index protects the serial. If another request inserted the same
+  // serial first, calculate a new one and retry without touching stock again.
+  for (;;) {
+    try {
+      return await Ticket.create({
+        ...datosTicket,
+        serial: await getSiguienteSerial(),
+      });
+    } catch (error) {
+      if (!isDuplicateKeyError(error)) throw error;
+    }
+  }
+};
+
 //sales
 const cajasAbiertas = async (req, res) => {
   try {
@@ -39,14 +68,19 @@ const abrirCaja = async (req, res) => {
     const cajaGuardada = await nuevaCaja.save();
     res.status(201).json(cajaGuardada);
   } catch (error) {
+    if (isDuplicateKeyError(error)) {
+      return res
+        .status(409)
+        .json({ message: "El usuario ya tiene una caja abierta" });
+    }
     res.status(400).json({ message: error.message });
   }
 };
 
 const cerrarCaja = async (req, res) => {
   try {
-    const cajaCerrada = await Sales.findByIdAndUpdate(
-      req.params.id,
+    const cajaCerrada = await Sales.findOneAndUpdate(
+      { _id: req.params.id, status: "abierta" },
       {
         status: "cerrada",
         fechaCierre: new Date(),
@@ -88,7 +122,9 @@ const populateTicketData = (query) =>
 
 const getTickets = async (req, res) => {
   try {
-    const tickets = await populateTicketData(Ticket.find());
+    const tickets = await populateTicketData(
+      Ticket.find().sort({ fecha: -1 }).limit(100),
+    );
     res.json(tickets);
   } catch (error) {
     res.status(500).json({ message: error.message });
@@ -153,44 +189,53 @@ const createTicket = async (req, res) => {
       return res.status(404).json({ message: "Empleado no encontrado" });
     }
 
-    const ultimo = await Ticket.findOne().sort({ createdAt: -1 });
-    let siguienteSerial = "TCK-00001";
-    if (ultimo) {
-      const match = ultimo.serial.match(/(\d+)$/);
-      if (match) {
-        const numero = parseInt(match[1], 10);
-        const nuevoNumero = numero + 1;
-        siguienteSerial = `TCK-${nuevoNumero.toString().padStart(5, "0")}`;
-      }
-    }
+    // Fetching every product individually produced 2N database round trips per
+    // ticket. Aggregate repeated products and validate them in a single query.
+    const cantidadesPorProducto = new Map();
     for (const item of productos) {
-      console.log(item);
-      const producto = await Producto.findOne({ _id: item.producto });
+      const productoId = String(item.producto);
+      cantidadesPorProducto.set(
+        productoId,
+        (cantidadesPorProducto.get(productoId) || 0) + Number(item.cantidad),
+      );
+    }
+
+    const productosEncontrados = await Producto.find({
+      _id: { $in: [...cantidadesPorProducto.keys()] },
+    })
+      .select("nombre stock")
+      .lean();
+    const productosPorId = new Map(
+      productosEncontrados.map((producto) => [String(producto._id), producto]),
+    );
+
+    for (const [productoId, cantidad] of cantidadesPorProducto) {
+      const producto = productosPorId.get(productoId);
       if (!producto) {
         return res.status(500).json({ message: "Producto no encontrado" });
       }
-      if (Number(producto.stock) < Number(item.cantidad)) {
+      if (Number(producto.stock) < cantidad) {
         return res.status(500).json({
           message: `No hay suficiente stock del producto: ${producto.nombre}`,
         });
       }
     }
 
-    for (const item of productos) {
-      await Producto.findByIdAndUpdate(
-        item.producto,
-        { $inc: { stock: -item.cantidad } }, // resta segura
-      );
-    }
+    await Producto.bulkWrite(
+      [...cantidadesPorProducto].map(([productoId, cantidad]) => ({
+        updateOne: {
+          filter: { _id: productoId },
+          update: { $inc: { stock: -cantidad } },
+        },
+      })),
+    );
 
-    const nuevoTicket = new Ticket({
+    const ticketGuardado = await guardarTicketConSerial({
       ...req.body,
       empleado: empleadoEncontrado._id,
       productos,
       pagosMixtos,
     });
-    nuevoTicket.serial = siguienteSerial;
-    const ticketGuardado = await nuevoTicket.save();
     res.status(201).json(ticketGuardado);
   } catch (error) {
     console.log(error.message);
