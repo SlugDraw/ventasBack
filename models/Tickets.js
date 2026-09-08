@@ -6,6 +6,14 @@ const timezone = require("dayjs/plugin/timezone");
 dayjs.extend(utc);
 dayjs.extend(timezone);
 
+const pagoMixtoSchema = new mongoose.Schema(
+  {
+    formaDePago: { type: String, required: true },
+    monto: { type: Number, required: true, min: 0 },
+  },
+  { _id: false },
+);
+
 const ticketSchema = new mongoose.Schema(
   {
     serial: {
@@ -31,10 +39,20 @@ const ticketSchema = new mongoose.Schema(
     ],
     caja: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: "Caja", // referencia al modelo Caja
+      ref: "Sale", // referencia al modelo de caja
+      required: true,
+    },
+    empleado: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
       required: true,
     },
     total: { type: Number, required: true },
+    descuentoTotal: { type: Number, required: true, min: 0, default: 0 },
+    pagosMixtos: {
+      type: [pagoMixtoSchema],
+      default: [],
+    },
     fecha: {
       type: Date,
       required: true,
